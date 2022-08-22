@@ -1,8 +1,6 @@
-# Fabric Example Mod
+# Split World Mod
 
-## Setup
-
-For setup instructions please see the [fabric wiki page](https://fabricmc.net/wiki/tutorial:setup) that relates to the IDE that you are using.
+This mod will make it so when you are on the negative side if the x=0 axis you will be in creative, and survival on the positive x side. Your inventory is saved and restored when the border is crossed to prevent cheating.
 
 ## License
 
