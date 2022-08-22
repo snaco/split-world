@@ -26,7 +26,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
 
 public class SplitWorld implements ModInitializer {
-  public static final Logger LOGGER = LoggerFactory.getLogger("tech.snaco.split-world");
+  public static final Logger LOGGER = LoggerFactory.getLogger("modid");
   Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {}.getType();
   Gson gson = new Gson();
 
