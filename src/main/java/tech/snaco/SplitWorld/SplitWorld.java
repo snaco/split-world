@@ -22,12 +22,12 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
 
 public class SplitWorld implements ModInitializer {
-  public static final Logger LOGGER = LoggerFactory.getLogger("modid");
-  Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {
-  }.getType();
+  public static final Logger LOGGER = LoggerFactory.getLogger("tech.snaco.split-world");
+  Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {}.getType();
   Gson gson = new Gson();
 
   @Override
@@ -45,6 +45,24 @@ public class SplitWorld implements ModInitializer {
         }
       }
     });
+    PlayerDeathCallback.EVENT.register((ServerPlayerEntity player) -> {
+      nukeSavedInventory(player, GameMode.SURVIVAL);
+      return ActionResult.PASS;
+    });
+  }
+
+  private void nukeSavedInventory(ServerPlayerEntity player, GameMode gameMode) {
+    var dir = new File(getDir(player));
+    var files = dir.listFiles();
+    if (files == null) {
+      player.getInventory().clear();
+    } else {
+      for (var file : dir.listFiles()) {
+        if (file.getName().contains(gameMode.toString())) {
+          file.delete();
+        }
+      }
+    }
   }
 
   private void initializePlayerDir(ServerPlayerEntity player) {
@@ -66,14 +84,11 @@ public class SplitWorld implements ModInitializer {
     if (player.isCreative() && targetGameMode == GameMode.SURVIVAL) {
       // save creative from player
       saveInventoryToFiles(player, GameMode.CREATIVE);
-
       // load survival
       loadInventoryFromDir(player, targetGameMode);
-
     } else if (!player.isCreative() && targetGameMode == GameMode.CREATIVE) {
       // save survival inventory
       saveInventoryToFiles(player, GameMode.SURVIVAL);
-
       // load creative inventory
       loadInventoryFromDir(player, targetGameMode);
     }
@@ -114,6 +129,7 @@ public class SplitWorld implements ModInitializer {
   }
 
   private void saveInventoryToFiles(ServerPlayerEntity player, GameMode gameMode) {
+    nukeSavedInventory(player, gameMode);
     try {
       var dir = getDir(player);
       var nbtList = new NbtList();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "tech.snaco.split-world",
   "version": "${version}",
 
   "name": "Split World",
@@ -10,11 +10,11 @@
   ],
   "contact": {
     "homepage": "https://snaco.tech/",
-    "sources": "https://github.com/snaco/WorldWall"
+    "sources": "https://github.com/snaco/split-world"
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/tech.snaco.split-world/icon.png",
 
   "environment": "*",
   "entrypoints": {
@@ -23,7 +23,7 @@
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "tech.snaco.split-world.mixins.json"
   ],
 
   "depends": {
