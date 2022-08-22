@@ -16,7 +16,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
@@ -24,18 +23,18 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
+import tech.snaco.SplitWorld.callbacks.PlayerDeathCallback;
+import tech.snaco.SplitWorld.callbacks.PlayerTickCallback;
 
 public class SplitWorld implements ModInitializer {
-  public static final Logger LOGGER = LoggerFactory.getLogger("modid");
+  public static final Logger LOGGER = LoggerFactory.getLogger("splitworld");
   Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {}.getType();
   Gson gson = new Gson();
 
   @Override
   public void onInitialize() {
-    ServerTickEvents.START_WORLD_TICK.register((world) -> {
-      var players = world.getPlayers();
-      for (var player : players) {
-        initializePlayerDir(player);
+    PlayerTickCallback.PLAYER_TICK.register((ServerPlayerEntity player) -> {
+      initializePlayerDir(player);
         var pos = player.getPos();
         if (pos.x < 0) {
           setGameMode(player, GameMode.CREATIVE);
@@ -43,41 +42,12 @@ public class SplitWorld implements ModInitializer {
         if (pos.x > 0) {
           setGameMode(player, GameMode.SURVIVAL);
         }
-      }
+      return ActionResult.PASS;
     });
-    PlayerDeathCallback.EVENT.register((ServerPlayerEntity player) -> {
+    PlayerDeathCallback.BEFORE_DEATH.register((ServerPlayerEntity player) -> {
       nukeSavedInventory(player, GameMode.SURVIVAL);
       return ActionResult.PASS;
     });
-  }
-
-  private void nukeSavedInventory(ServerPlayerEntity player, GameMode gameMode) {
-    var dir = new File(getDir(player));
-    var files = dir.listFiles();
-    if (files == null) {
-      player.getInventory().clear();
-    } else {
-      for (var file : dir.listFiles()) {
-        if (file.getName().contains(gameMode.toString())) {
-          file.delete();
-        }
-      }
-    }
-  }
-
-  private void initializePlayerDir(ServerPlayerEntity player) {
-    var dirName = getDir(player);
-    var playerDir = Paths.get(dirName);
-    try {
-      var playerDirPath = Files.createDirectory(playerDir);
-      if (Files.notExists(playerDirPath) && Files.exists(playerDirPath)) {
-        new File(dirName).mkdir();
-      }
-    } catch (FileAlreadyExistsException ex) {
-      // fine
-    } catch (IOException ex) {
-      LOGGER.error("Error initializing player dir!", ex);
-    }
   }
 
   private boolean setGameMode(ServerPlayerEntity player, GameMode targetGameMode) {
@@ -97,7 +67,51 @@ public class SplitWorld implements ModInitializer {
   }
 
   private String getDir(ServerPlayerEntity player) {
-    return String.format("%s_inv", player.getUuidAsString());
+    return String.format("splitworld/%s_inv", player.getUuidAsString());
+  }
+
+  private void nukeSavedInventory(ServerPlayerEntity player, GameMode gameMode) {
+    var dir = new File(getDir(player));
+    var files = dir.listFiles();
+    if (files == null) {
+      player.getInventory().clear();
+    } else {
+      for (var file : dir.listFiles()) {
+        if (file.getName().contains(gameMode.toString())) {
+          file.delete();
+        }
+      }
+    }
+  }
+
+  private boolean initializePlayerDir(ServerPlayerEntity player) {
+    var topDirName = "splitworld";
+    var topDir = Paths.get(topDirName);
+    try {
+      var topDirPath = Files.createDirectory(topDir);
+      if (Files.notExists(topDirPath) && !Files.exists(topDirPath)) {
+        new File(topDirName).mkdir();
+      }
+    } catch (FileAlreadyExistsException ex) {
+      // fine
+    } catch (IOException ex) {
+      LOGGER.error("Error initializing top dir!", ex);
+      return false;
+    }
+    var dirName = getDir(player);
+    var playerDir = Paths.get(dirName);
+    try {
+      var playerDirPath = Files.createDirectory(playerDir);
+      if (Files.notExists(playerDirPath) && !Files.exists(playerDirPath)) {
+        new File(dirName).mkdir();
+      }
+    } catch (FileAlreadyExistsException ex) {
+      return true;
+    } catch (IOException ex) {
+      LOGGER.error("Error initializing player dir!", ex);
+      return false;
+    }
+    return true;
   }
 
   private void loadInventoryFromDir(ServerPlayerEntity player, GameMode gameMode) {
