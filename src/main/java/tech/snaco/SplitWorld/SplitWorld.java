@@ -1,113 +1,130 @@
 package tech.snaco.SplitWorld;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.GameMode;
-import net.minecraft.item.ItemStack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.GameMode;
+
 public class SplitWorld implements ModInitializer {
-    Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {}.getType();
-    Gson gson = new Gson();
+  public static final Logger LOGGER = LoggerFactory.getLogger("modid");
+  Type ITEM_STACK_LIST_TYPE = new TypeToken<ArrayList<ItemStack>>() {
+  }.getType();
+  Gson gson = new Gson();
 
-	@Override
-	public void onInitialize() {
-        ServerTickEvents.START_WORLD_TICK.register((world) -> {
-            var players = world.getPlayers();
-            for (var player : players) {
-                var pos = player.getPos();
-                if (pos.x < 0) {
-                    setGameMode(player, GameMode.CREATIVE);
-                }
-                if (pos.x > 0)  {
-                    setGameMode(player, GameMode.SURVIVAL);
-                }
-            }
-        });
-	}
-
-    private boolean setGameMode(ServerPlayerEntity player, GameMode targetGameMode) {
-        var savedCreative = getInventoryFile(player, GameMode.CREATIVE);
-        var savedSurvival = getInventoryFile(player, GameMode.SURVIVAL);
-        if (player.isCreative() && targetGameMode == GameMode.SURVIVAL) {
-            // save creative from player
-            saveInventoryFile(player.getInventory(), savedCreative);
-            // load survival
-            if (savedSurvival.exists()) {
-                player.getInventory().clone(loadInventoryFile(player, targetGameMode));
-            } else {
-                player.getInventory().clear();
-            }
-        } else if (!player.isCreative() && targetGameMode == GameMode.CREATIVE) {
-            // save survival inventory
-            saveInventoryFile(player.getInventory(), savedSurvival);
-            // load creative inventory
-            if (savedCreative.exists()) {
-                player.getInventory().clone(loadInventoryFile(player, targetGameMode));
-            } else {
-                player.getInventory().clear();
-            }
+  @Override
+  public void onInitialize() {
+    ServerTickEvents.START_WORLD_TICK.register((world) -> {
+      var players = world.getPlayers();
+      for (var player : players) {
+        initializePlayerDir(player);
+        var pos = player.getPos();
+        if (pos.x < 0) {
+          setGameMode(player, GameMode.CREATIVE);
         }
-        player.changeGameMode(targetGameMode);
-        return true;
-    }
+        if (pos.x > 0) {
+          setGameMode(player, GameMode.SURVIVAL);
+        }
+      }
+    });
+  }
 
-    private File getInventoryFile(ServerPlayerEntity player, GameMode gameMode) {
-        var fileName = String.format("%s_%s.inv", player.getUuidAsString(), gameMode.toString());
-        var file = new File(fileName);
-        return file;
+  private void initializePlayerDir(ServerPlayerEntity player) {
+    var dirName = getDir(player);
+    var playerDir = Paths.get(dirName);
+    try {
+      var playerDirPath = Files.createDirectory(playerDir);
+      if (Files.notExists(playerDirPath) && Files.exists(playerDirPath)) {
+        new File(dirName).mkdir();
+      }
+    } catch (FileAlreadyExistsException ex) {
+      // fine
+    } catch (IOException ex) {
+      LOGGER.error("Error initializing player dir!", ex);
     }
+  }
 
-    private PlayerInventory loadInventoryFile(ServerPlayerEntity player, GameMode gameMode) {
-        var file = getInventoryFile(player, gameMode);
-        try {
-            var in = new FileInputStream(file);
-            var br = new BufferedReader(new InputStreamReader(in));
-            var sb = new StringBuilder();
-            String line;
-            while((line = br.readLine()) != null) {
-                sb.append(line);
+  private boolean setGameMode(ServerPlayerEntity player, GameMode targetGameMode) {
+    if (player.isCreative() && targetGameMode == GameMode.SURVIVAL) {
+      // save creative from player
+      saveInventoryToFiles(player, GameMode.CREATIVE);
+
+      // load survival
+      loadInventoryFromDir(player, targetGameMode);
+
+    } else if (!player.isCreative() && targetGameMode == GameMode.CREATIVE) {
+      // save survival inventory
+      saveInventoryToFiles(player, GameMode.SURVIVAL);
+
+      // load creative inventory
+      loadInventoryFromDir(player, targetGameMode);
+    }
+    player.changeGameMode(targetGameMode);
+    return true;
+  }
+
+  private String getDir(ServerPlayerEntity player) {
+    return String.format("%s_inv", player.getUuidAsString());
+  }
+
+  private void loadInventoryFromDir(ServerPlayerEntity player, GameMode gameMode) {
+    try {
+      NbtList nbtList = new NbtList();
+      var dir = new File(getDir(player));
+      var files = dir.listFiles();
+      if (files == null) {
+        player.getInventory().clear();
+      } else {
+        for (var file : dir.listFiles()) {
+          if (file.getName().contains(gameMode.toString())) {
+            var nbt = NbtIo.read(file);
+            if (nbt != null) {
+              nbtList.add(nbt);
             }
-            in.close();
-            br.close();
-            var contents = sb.toString();
-            ArrayList<ItemStack> stacks = gson.fromJson(contents, ITEM_STACK_LIST_TYPE);
-            var temp_inv = new PlayerInventory(null);
-            for (int i = 0; i < temp_inv.size() && i < stacks.size(); i++) {
-                temp_inv.insertStack(i, stacks.get(i));
-            }
-            return temp_inv;
-        } catch (Exception ex) {
-            System.err.println("Error reading inventory file!");
-            return null;
+          }
         }
+      }
+      player.getInventory().clear();
+      player.getInventory().readNbt(nbtList);
+    } catch (FileNotFoundException ex) {
+      LOGGER.error("Error reading inventory file!", ex);
+      player.getInventory().dropAll();
+    } catch (IOException ex) {
+      LOGGER.error("Error reading inventory file!", ex);
+      player.getInventory().dropAll();
     }
+  }
 
-    private void saveInventoryFile(PlayerInventory inventory, File file) {
-        try {
-            var stacks = extractStacks(inventory);
-            var out = new FileOutputStream(file);
-            var json = gson.toJson(stacks);
-            out.write(json.getBytes());
-            out.close();
-        } catch (Exception ex) {
-            System.err.println("Error setting inventory file contents!");
-        }
+  private void saveInventoryToFiles(ServerPlayerEntity player, GameMode gameMode) {
+    try {
+      var dir = getDir(player);
+      var nbtList = new NbtList();
+      nbtList = player.getInventory().writeNbt(nbtList);
+      for (int i = 0; i < nbtList.size(); i++) {
+        var nbt = nbtList.get(i);
+        var file = new File(String.format("%s/%s_%d.nbt", dir, gameMode.toString(), i));
+        NbtIo.write((NbtCompound) nbt, file);
+      }
+    } catch (Exception ex) {
+      System.err.println("Error setting inventory file contents!");
     }
-
-    private ArrayList<ItemStack> extractStacks(PlayerInventory inventory) {
-        var output = new ArrayList<ItemStack>();
-        for (int i = 0; i < inventory.size(); i++) {
-            output.add(inventory.getStack(i));
-        }
-        return output;
-    }
+  }
 }
