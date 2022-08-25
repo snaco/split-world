@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.snaco.SplitWorld.callbacks.PlayerCallback;
 import tech.snaco.utils.IO;
+import tech.snaco.utils.mc;
+import tech.snaco.utils.string.s;
 
 public class SplitWorld implements ModInitializer {
   public static final Logger LOGGER = LoggerFactory.getLogger("splitworld");
@@ -31,14 +33,15 @@ public class SplitWorld implements ModInitializer {
   }
 
   private void setGameMode(ServerPlayerEntity player, GameMode targetGameMode) {
-    if (player.isCreative() && targetGameMode == GameMode.SURVIVAL) {
-      IO.saveInventory(player, GameMode.CREATIVE);
-      IO.loadInventory(player, GameMode.SURVIVAL);
-    } else if (!player.isCreative() && targetGameMode == GameMode.CREATIVE) {
-      IO.saveInventory(player, GameMode.SURVIVAL);
-      IO.loadInventory(player, GameMode.CREATIVE);
+    if (player.isSpectator()) {
+      return;
     }
-    player.changeGameMode(targetGameMode);
+    if ((mc.playerInGameMode(player, GameMode.SURVIVAL) && targetGameMode == GameMode.CREATIVE) ||
+        (mc.playerInGameMode(player, GameMode.CREATIVE) && targetGameMode == GameMode.SURVIVAL)) {
+      IO.saveInventory(player, mc.Not(targetGameMode));
+      IO.loadInventory(player, targetGameMode);
+      player.changeGameMode(targetGameMode);
+      LOGGER.info(s.f("Switched %s game mode from %s to %s", mc.playerName(player), mc.Not(targetGameMode), targetGameMode));
+    }
   }
-
 }

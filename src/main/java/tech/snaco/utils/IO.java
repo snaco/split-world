@@ -35,7 +35,6 @@ public class IO {
     var dir = new File(getDir(player));
     var files = dir.listFiles();
     if (files == null) {
-      // player.getInventory().clear();
       return false;
     }
     for (var file : dir.listFiles()) {
