@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "splitworld",
-  "version": "1.0.0",
+  "version": "0.1.0",
 
   "name": "Split World",
   "description": "This mod splits the world into creative and survival on either side of x=0 and manages inventories for each.",
@@ -13,7 +13,7 @@
     "sources": "https://github.com/snaco/WorldWall"
   },
 
-  "license": "CC0-1.0",
+  "license": "GPLv3",
   "icon": "assets/splitworld/icon.png",
 
   "environment": "*",
