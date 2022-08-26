@@ -32,8 +32,12 @@ dependencies {
 
 	// modImplementation "net.fabricmc.fabric-api:fabric-api-deprecated:${project.fabric_version}"
 	modImplementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_version}") {
-      exclude group: "net.fabricmc.fabric-api", module: "fabric-gametest-api-v1"
-    }
+		exclude group: "net.fabricmc.fabric-api", module: "fabric-gametest-api-v1"
+	}
+
+	implementation 'com.fasterxml.jackson.core:jackson-core:2.10.1'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.10.1'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.1'
 }
 
 processResources {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
-  "version": "${version}",
+  "id": "splitworld",
+  "version": "1.0.0",
 
   "name": "Split World",
   "description": "This mod splits the world into creative and survival on either side of x=0 and manages inventories for each.",

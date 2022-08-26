@@ -19,10 +19,6 @@ public class mc {
     }
   }
 
-  public static boolean isCreativeOrSurvival(GameMode gameMode) {
-    return gameMode == GameMode.SURVIVAL || gameMode == GameMode.CREATIVE;
-  }
-
   public static boolean playerInGameMode(ServerPlayerEntity player, GameMode gameMode) {
     if (player.isCreative() && gameMode == GameMode.CREATIVE)
       return true;

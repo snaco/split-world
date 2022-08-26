@@ -13,6 +13,7 @@ import tech.snaco.utils.string.s;
 
 public class SplitWorld implements ModInitializer {
   public static final Logger LOGGER = LoggerFactory.getLogger("splitworld");
+  public Config config = ConfigLoader.load();
 
   @Override
   public void onInitialize() {
@@ -23,10 +24,10 @@ public class SplitWorld implements ModInitializer {
   }
 
   private ActionResult trackPlayerPosition(ServerPlayerEntity player) {
-    if (player.getPos().x < 0) {
+    if (this.playerOnCreativeSide(player)) {
       setGameMode(player, GameMode.CREATIVE);
     }
-    if (player.getPos().x > 0) {
+    else {
       setGameMode(player, GameMode.SURVIVAL);
     }
     return ActionResult.PASS;
@@ -43,5 +44,24 @@ public class SplitWorld implements ModInitializer {
       player.changeGameMode(targetGameMode);
       LOGGER.info(s.f("Switched %s game mode from %s to %s", mc.playerName(player), mc.Not(targetGameMode), targetGameMode));
     }
+  }
+
+  public boolean playerOnCreativeSide(ServerPlayerEntity player) {
+    var playerPosition = getRelevantPlayerPosition(player);
+    if (this.config.creativeSide.equals("positive")) {
+      return playerPosition > this.config.borderLocation;
+    }
+    return playerPosition < this.config.borderLocation;
+  }
+  
+  private double getRelevantPlayerPosition(ServerPlayerEntity player) {
+    this.config.borderAxis = this.config.borderAxis.toUpperCase();
+    if (this.config.borderAxis.equals("Y")) {
+      return player.getPos().y;
+    }
+    if (this.config.borderAxis.equals("Z")) {
+      return player.getPos().z;
+    }
+    return player.getPos().x;
   }
 }
