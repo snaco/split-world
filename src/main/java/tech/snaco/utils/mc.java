@@ -24,4 +24,10 @@ public class mc {
     var nbt = player.writeNbt(new NbtCompound());
     return GameMode.byId(nbt.getInt("playerGameType"));
   }
+
+  public static void setPlayerGameMode(ServerPlayerEntity player, GameMode gameMode) {
+    var nbt = player.writeNbt(new NbtCompound());
+    nbt.putInt("playerGameType", gameMode.getId());
+    player.readNbt(nbt);
+  }
 }
