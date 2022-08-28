@@ -82,7 +82,6 @@ public class IO {
   }
 
   public static void saveInventory(ServerPlayerEntity player, GameMode gameMode) {
-    IO.nukeSavedInventory(player, gameMode);
     try {
       var dir = getDir(player);
       var nbtList = new NbtList();

@@ -34,11 +34,10 @@ public class SplitWorld implements ModInitializer {
   }
 
   private void setGameMode(ServerPlayerEntity player, GameMode targetGameMode) {
-    if (player.isSpectator()) {
-      return;
-    }
-    if ((mc.playerInGameMode(player, GameMode.SURVIVAL) && targetGameMode == GameMode.CREATIVE) ||
-        (mc.playerInGameMode(player, GameMode.CREATIVE) && targetGameMode == GameMode.SURVIVAL)) {
+    var playerGameMode = mc.getPlayerGameMode(player);
+    if (playerGameMode == GameMode.SURVIVAL && targetGameMode == GameMode.CREATIVE ||
+        playerGameMode == GameMode.CREATIVE && targetGameMode == GameMode.SURVIVAL) {
+      IO.nukeSavedInventory(player, mc.Not(targetGameMode));
       IO.saveInventory(player, mc.Not(targetGameMode));
       IO.loadInventory(player, targetGameMode);
       player.changeGameMode(targetGameMode);
@@ -63,5 +62,5 @@ public class SplitWorld implements ModInitializer {
       return player.getPos().z;
     }
     return player.getPos().x;
-  }
+  }  
 }

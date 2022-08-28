@@ -1,5 +1,6 @@
 package tech.snaco.utils;
 
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.GameMode;
 
@@ -19,13 +20,8 @@ public class mc {
     }
   }
 
-  public static boolean playerInGameMode(ServerPlayerEntity player, GameMode gameMode) {
-    if (player.isCreative() && gameMode == GameMode.CREATIVE)
-      return true;
-    if (!player.isCreative() && !player.isSpectator() && gameMode == GameMode.SURVIVAL)
-      return true;
-    if (player.isSpectator() && gameMode == GameMode.SPECTATOR)
-      return true;
-    return false;
+  public static GameMode getPlayerGameMode(ServerPlayerEntity player) {
+    var nbt = player.writeNbt(new NbtCompound());
+    return GameMode.byId(nbt.getInt("playerGameType"));
   }
 }
