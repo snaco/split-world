@@ -50,7 +50,9 @@ public class SplitWorld implements ModInitializer {
         setGameMode(player, true, false);
       } else if (playerPosition <= positiveBorder && playerPosition >= negativeBorder) {
         bufferZone(player);
-        convertBorderBlocksAtFeet(player);
+        if (config.replaceBorderBlocks) {
+          convertBorderBlocksAtFeet(player);
+        }
       } else if (playerPosition < negativeBorder) {
         setGameMode(player, false, false);
       } else {
