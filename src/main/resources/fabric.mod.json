@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "splitworld",
-  "version": "0.1.0",
+  "version": "1.0.0",
 
   "name": "Split World",
-  "description": "This mod splits the world into creative and survival on either side of x=0 and manages inventories for each.",
+  "description": "This mod splits the world along a configurable axis into creative and survival with a buffer zone to prevent cheating.",
   "authors": [
     "snaco"
   ],
