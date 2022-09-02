@@ -3,6 +3,7 @@ package tech.snaco.SplitWorld;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import org.slf4j.Logger;
 import com.google.gson.Gson;
@@ -26,7 +27,10 @@ public class ConfigLoader {
   
   private static Config createConfig() {
     try {
-      Files.writeString(file, gson.toJson(new Config()));
+      try {
+        Files.createDirectory(Path.of("config"));
+      } catch (Exception ex1) {}
+      Files.writeString(file, gson.toJson(new Config()), StandardOpenOption.CREATE);
       LOGGER.info("Created new config.");
     } catch (Exception ex) {
       LOGGER.error("Error writing config file!", ex);
