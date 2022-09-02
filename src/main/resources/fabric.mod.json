@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "splitworld",
-  "version": "1.0.0",
+  "version": "1.0.1",
 
   "name": "Split World",
   "description": "This mod splits the world along a configurable axis into creative and survival with a buffer zone to prevent cheating.",
