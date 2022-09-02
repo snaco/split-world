@@ -12,7 +12,7 @@ import tech.snaco.SplitWorld.callbacks.PlayerCallback;
 
 @Mixin(ServerPlayerEntity.class)
 public class ServerPlayerMixin {
-  @Inject(at = @At("HEAD"), method = "Lnet/minecraft/server/network/ServerPlayerEntity;onDeath()V", cancellable = true)
+  @Inject(at = @At("HEAD"), method = "Lnet/minecraft/server/network/ServerPlayerEntity;onDeath(Lnet/minecraft/entity/damage/DamageSource;)V", cancellable = true)
   private void onDeath(final DamageSource damageSource, final CallbackInfo info) {
     ActionResult result = PlayerCallback.BEFORE_DEATH.invoker().interact((ServerPlayerEntity) (Object) (this));
     if (result == ActionResult.FAIL) {
