@@ -40,6 +40,8 @@ public class SplitWorld implements ModInitializer {
   }
 
   private ActionResult trackPlayerPosition(ServerPlayerEntity player) {
+    // TODO: implement check if the current tick dimension is not the same as the previous and if not then apply new dimension rules
+    // TODO: Add check for dimension override
     var dimension = getPlayerCurrentDimension(player);
     var cfg = config.dimensionConfigs.stream().filter(dc -> dc.dimensionName.equals(dimension)).findFirst();
     if (cfg.isPresent()) {
