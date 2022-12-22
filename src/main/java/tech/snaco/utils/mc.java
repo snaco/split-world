@@ -25,6 +25,11 @@ public class mc {
     return GameMode.byId(nbt.getInt("playerGameType"));
   }
 
+  public static void getPlayerDimension(ServerPlayerEntity player) {
+    var nbt = player.writeNbt((new NbtCompound()));
+
+  }
+
   public static void setPlayerGameMode(ServerPlayerEntity player, GameMode gameMode) {
     player.changeGameMode(gameMode);
   }

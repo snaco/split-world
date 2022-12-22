@@ -14,14 +14,22 @@ import net.minecraft.world.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.snaco.SplitWorld.callbacks.PlayerCallback;
+import tech.snaco.SplitWorld.types.BaseConfig;
+import tech.snaco.SplitWorld.types.Config;
 import tech.snaco.utils.IO;
 import tech.snaco.utils.mc;
 import tech.snaco.utils.exceptions.SplitWorldConfigException;
 import tech.snaco.utils.string.s;
 
+import java.util.stream.Collectors;
+
 public class SplitWorld implements ModInitializer {
   public static final Logger LOGGER = LoggerFactory.getLogger("splitworld");
-  public Config config = ConfigLoader.load();
+  public Config config;
+
+  public SplitWorld() {
+    this.config = new ConfigLoader().load();
+  }
 
   @Override
   public void onInitialize() {
@@ -32,33 +40,36 @@ public class SplitWorld implements ModInitializer {
   }
 
   private ActionResult trackPlayerPosition(ServerPlayerEntity player) {
-    var playerPosition = getRelevantPlayerPosition(player);
-    if (config.borderWidth < 0) {
-      LOGGER.error("Error in split world config file!",
-          new SplitWorldConfigException("Split World border width cannot be a negative value!"));
-      return ActionResult.FAIL;
-    } else if (config.borderWidth == 0) {
-      if (playerPosition > config.borderLocation) {
-        setGameMode(player, true, true);
+    var dimension = getPlayerCurrentDimension(player);
+    var cfg = config.dimensionConfigs.stream().filter(dc -> dc.dimensionName.equals(dimension)).findFirst();
+    if (cfg.isPresent()) {
+      var config = cfg.get();
+      var playerPosition = getRelevantPlayerPosition(player, config);
+      if (config.borderWidth < 0) {
+        LOGGER.error("Error in split world config file!",
+                new SplitWorldConfigException("Split World border width cannot be a negative value!"));
+        return ActionResult.FAIL;
+      } else if (config.borderWidth == 0) {
+        setGameMode(player, playerPosition > config.borderLocation, true, config);
       } else {
-        setGameMode(player, false, true);
-      }
-    } else {
-      var positiveBorder = config.borderLocation + (config.borderWidth / 2);
-      var negativeBorder = config.borderLocation - (config.borderWidth / 2);
-      if (playerPosition > positiveBorder) {
-        setGameMode(player, true, false);
-      } else if (playerPosition <= positiveBorder && playerPosition >= negativeBorder) {
-        bufferZone(player);
-        if (config.replaceBorderBlocks) {
-          convertBorderBlocksAtFeet(player);
+        var positiveBorder = config.borderLocation + (config.borderWidth / 2);
+        var negativeBorder = config.borderLocation - (config.borderWidth / 2);
+        if (playerPosition > positiveBorder) {
+          setGameMode(player, true, false, config);
+        } else if (playerPosition <= positiveBorder && playerPosition >= negativeBorder) {
+          bufferZone(player);
+          if (config.replaceBorderBlocks) {
+            convertBorderBlocksAtFeet(player, config);
+          }
+        } else if (playerPosition < negativeBorder) {
+          setGameMode(player, false, false, config);
+        } else {
+          LOGGER.info("Cannot make heads or tails of player position. Ignoring.");
         }
-      } else if (playerPosition < negativeBorder) {
-        setGameMode(player, false, false);
-      } else {
-        LOGGER.info("Cannot make heads or tails of player position. Ignoring.");
       }
     }
+
+
     return ActionResult.PASS;
   }
 
@@ -84,9 +95,9 @@ public class SplitWorld implements ModInitializer {
     player.getInventory().clear();
   }
 
-  private void setGameMode(ServerPlayerEntity player, boolean onPositiveSide, boolean preNukeInventory) {
+  private void setGameMode(ServerPlayerEntity player, boolean onPositiveSide, boolean preNukeInventory, BaseConfig config) {
     var playerGameMode = mc.getPlayerGameMode(player);
-    if (shouldSetCreative(onPositiveSide) && playerGameMode != GameMode.CREATIVE) {
+    if (shouldSetCreative(onPositiveSide, config) && playerGameMode != GameMode.CREATIVE) {
       if (preNukeInventory) {
         IO.nukeSavedInventory(player, GameMode.SURVIVAL);
         IO.saveInventory(player, GameMode.SURVIVAL);
@@ -96,7 +107,7 @@ public class SplitWorld implements ModInitializer {
       player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
           SoundCategory.BLOCKS, 0.25f, 1f);
       LOGGER.info(s.f("%s is now creative.", mc.playerName(player)));
-    } else if (shouldSetSurvival(onPositiveSide) && playerGameMode != GameMode.SURVIVAL) {
+    } else if (shouldSetSurvival(onPositiveSide, config) && playerGameMode != GameMode.SURVIVAL) {
       if (preNukeInventory) {
         IO.nukeSavedInventory(player, GameMode.CREATIVE);
         IO.saveInventory(player, GameMode.CREATIVE);
@@ -109,51 +120,52 @@ public class SplitWorld implements ModInitializer {
     }
   }
 
-  private boolean shouldSetSurvival(boolean onPositiveSide) {
-    return !shouldSetCreative(onPositiveSide);
+  private boolean shouldSetSurvival(boolean onPositiveSide, BaseConfig config) {
+    return !shouldSetCreative(onPositiveSide, config);
   }
 
-  private boolean shouldSetCreative(boolean onPositiveSide) {
+  private boolean shouldSetCreative(boolean onPositiveSide, BaseConfig config) {
     if (onPositiveSide && config.creativeSide.equals("positive")) {
       return true;
     }
-    if (!onPositiveSide && config.creativeSide.equals("negative")) {
-      return true;
-    }
-    return false;
+    return !onPositiveSide && config.creativeSide.equals("negative");
   }
 
-  public boolean playerOnCreativeSide(ServerPlayerEntity player) {
-    var playerPosition = getRelevantPlayerPosition(player);
-    if (this.config.creativeSide.equals("positive")) {
-      return playerPosition > this.config.borderLocation;
+  public boolean playerOnCreativeSide(ServerPlayerEntity player, BaseConfig config) {
+    var playerPosition = getRelevantPlayerPosition(player, config);
+    if (config.creativeSide.equals("positive")) {
+      return playerPosition > config.borderLocation;
     }
-    return playerPosition < this.config.borderLocation;
+    return playerPosition < config.borderLocation;
   }
 
-  private double getRelevantPlayerPosition(ServerPlayerEntity player) {
-    this.config.borderAxis = this.config.borderAxis.toUpperCase();
-    if (this.config.borderAxis.equals("Y")) {
+  private double getRelevantPlayerPosition(ServerPlayerEntity player, BaseConfig config) {
+    config.borderAxis = config.borderAxis.toUpperCase();
+    if (config.borderAxis.equals("Y")) {
       return player.getPos().y;
     }
-    if (this.config.borderAxis.equals("Z")) {
+    if (config.borderAxis.equals("Z")) {
       return player.getPos().z;
     }
     return player.getPos().x;
   }
 
-  private double getRelevantBlockPos(BlockPos blockPos) {
-    this.config.borderAxis = this.config.borderAxis.toUpperCase();
-    if (this.config.borderAxis.equals("Z")) {
+  private String getPlayerCurrentDimension(ServerPlayerEntity player) {
+    return player.getEntityWorld().getRegistryKey().getValue().toString();
+  }
+
+  private double getRelevantBlockPos(BlockPos blockPos, BaseConfig config) {
+    config.borderAxis = config.borderAxis.toUpperCase();
+    if (config.borderAxis.equals("Z")) {
       return blockPos.getZ();
     }
     return blockPos.getX();
   }
 
-  private void convertBorderBlocksAtFeet(ServerPlayerEntity player) {
+  private void convertBorderBlocksAtFeet(ServerPlayerEntity player, BaseConfig config) {
     for (int k = -5; k < 5; k++) {
       for (int i = -5; i < 5; i++) {
-        for (int j = 0 - config.borderWidth - 1; j < config.borderWidth; j++) {
+        for (int j = -config.borderWidth - 1; j < config.borderWidth; j++) {
           var feet = new BlockPos(
               new Vec3i(player.getBlockPos().getX(), player.getBlockPos().getY() - 1, player.getPos().getZ()));
           if (config.borderAxis.equals("X")) {
@@ -164,8 +176,8 @@ public class SplitWorld implements ModInitializer {
           }
           if (player.world.getBlockState(feet) != Blocks.AIR.getDefaultState() &&
               player.world.getBlockState(feet) != Blocks.BEDROCK.getDefaultState() &&
-              getRelevantBlockPos(feet) >= config.borderLocation - (config.borderWidth / 2) &&
-              getRelevantBlockPos(feet) < config.borderLocation + (config.borderWidth / 2)) {
+              getRelevantBlockPos(feet, config) >= config.borderLocation - (config.borderWidth / 2.0) &&
+              getRelevantBlockPos(feet, config) < config.borderLocation + (config.borderWidth / 2.0)) {
             player.world.setBlockState(feet, Blocks.BEDROCK.getDefaultState());
           }
         }
