@@ -89,6 +89,7 @@ public class SplitWorld implements ModInitializer {
           bufferZone(player);
           if (config.replaceBorderBlocks) {
             convertBorderBlocksAtFeet(player, config);
+            keepPlayerAboveGround(player);
           }
         } else if (playerPosition < negativeBorder) {
           setGameMode(player, false, false, config);
@@ -97,8 +98,6 @@ public class SplitWorld implements ModInitializer {
         }
       }
     }
-
-
     return ActionResult.PASS;
   }
 
@@ -116,8 +115,7 @@ public class SplitWorld implements ModInitializer {
       IO.nukeSavedInventory(player, gameMode);
       IO.saveInventory(player, gameMode);
       player.getInventory().clear();
-      // TODO: Make this switch to spectator but also need to find a way to prevent spectator from going through walls
-      mc.setPlayerGameMode(player, GameMode.ADVENTURE);
+      mc.setPlayerGameMode(player, GameMode.SPECTATOR);
       player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
           SoundCategory.BLOCKS, 0.25f, 1f);
       LOGGER.info(string.info("%s is now adventuring.", mc.playerName(player)));
@@ -146,6 +144,9 @@ public class SplitWorld implements ModInitializer {
       IO.loadInventory(player, GameMode.SURVIVAL);
       player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
           SoundCategory.BLOCKS, 0.25f, 1f);
+      if (config.creativeSide.equals("negative")) {
+        player.teleport(player.getX(), findGroundLevel(player) + 1, player.getZ());
+      }
       LOGGER.info(string.info("%s is now surviving.", mc.playerName(player)));
     }
   }
@@ -185,7 +186,7 @@ public class SplitWorld implements ModInitializer {
   }
 
   private void convertBorderBlocksAtFeet(ServerPlayerEntity player, DimensionConfig config) {
-    for (int k = -5; k < 5; k++) {
+    for (int k = -400; k < 5; k++) {
       for (int i = -5; i < 5; i++) {
         for (int j = -config.borderWidth - 1; j < config.borderWidth; j++) {
           var feet = new BlockPos(
@@ -196,10 +197,16 @@ public class SplitWorld implements ModInitializer {
           if (config.borderAxis.equals("Z")) {
             feet = feet.add(i, k, j);
           }
-          if (player.world.getBlockState(feet) != Blocks.AIR.getDefaultState() &&
-              player.world.getBlockState(feet) != Blocks.BEDROCK.getDefaultState() &&
+          var blockAtFeet = player.world.getBlockState(feet);
+          if (blockAtFeet != Blocks.AIR.getDefaultState() &&
+              blockAtFeet != Blocks.BEDROCK.getDefaultState() &&
+              blockAtFeet != Blocks.END_PORTAL.getDefaultState() &&
+              blockAtFeet != Blocks.END_PORTAL_FRAME.getDefaultState() &&
               getRelevantBlockPos(feet, config) >= config.borderLocation - (config.borderWidth / 2.0) &&
               getRelevantBlockPos(feet, config) < config.borderLocation + (config.borderWidth / 2.0)) {
+            var head = new BlockPos(new Vec3i(player.getX(), player.getY() + 1, player.getZ()));
+            var body = new BlockPos(new Vec3i(player.getX(), player.getY(), player.getZ()));
+            // TODO: Add custom block that uses END_GATE texture and is unbreakable to be the border
             player.world.setBlockState(feet, Blocks.BEDROCK.getDefaultState());
           }
         }
@@ -207,6 +214,22 @@ public class SplitWorld implements ModInitializer {
     }
   }
 
+  private void keepPlayerAboveGround(ServerPlayerEntity player) {
+    var ground = findGroundLevel(player);
+    if (player.getY() < ground) {
+      player.teleport(player.getX(), ground + 1, player.getZ());
+    }
+  }
+
+  private int findGroundLevel(ServerPlayerEntity player) {
+    for (int y = 319; y > -64; y--) {
+      var block = player.world.getBlockState(new BlockPos(new Vec3i(player.getBlockPos().getX(), y, player.getPos().getZ())));
+      if (block != Blocks.AIR.getDefaultState() && block != Blocks.VOID_AIR.getDefaultState()) {
+        return y;
+      }
+    }
+    return 0;
+  }
 
   private void changeGameMode(ServerPlayerEntity player, GameMode currentGameMode, GameMode newGameMode) {
     IO.nukeSavedInventory(player, currentGameMode);
