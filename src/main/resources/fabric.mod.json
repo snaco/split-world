@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "splitworld",
-  "version": "1.0.1",
+  "version": "2.0.0",
 
   "name": "Split World",
   "description": "This mod splits the world along a configurable axis into creative and survival with a buffer zone to prevent cheating.",
@@ -27,9 +27,9 @@
   ],
 
   "depends": {
-    "fabricloader": ">=0.14.6",
+    "fabricloader": ">=0.14.9",
     "fabric": "*",
-    "minecraft": "~1.19",
+    "minecraft": "~1.19.2",
     "java": ">=17"
   },
   "suggests": {
