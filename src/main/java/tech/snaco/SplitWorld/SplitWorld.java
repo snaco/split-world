@@ -65,7 +65,6 @@ public class SplitWorld implements ModInitializer {
   }
 
   private ActionResult trackPlayerPosition(ServerPlayerEntity player) {
-    player.swingHand(Hand.OFF_HAND);
     var dimension = getPlayerCurrentDimension(player);
     var cfg = config.dimensionConfigs.stream().filter(dc -> dc.dimensionName.equals(dimension)).findFirst();
     if (cfg.isPresent()) {
