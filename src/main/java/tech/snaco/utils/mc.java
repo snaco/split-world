@@ -4,6 +4,8 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.GameMode;
 
+import java.util.Locale;
+
 public class mc {
   public static String playerName(ServerPlayerEntity player) {
     return player.getName().getString();
@@ -23,6 +25,17 @@ public class mc {
   public static GameMode getPlayerGameMode(ServerPlayerEntity player) {
     var nbt = player.writeNbt(new NbtCompound());
     return GameMode.byId(nbt.getInt("playerGameType"));
+  }
+
+  public static GameMode getGameModeFromString(String gameMode) {
+    gameMode = gameMode.toLowerCase();
+    return switch (gameMode) {
+      case "creative" -> GameMode.CREATIVE;
+      case "survival" -> GameMode.SURVIVAL;
+      case "adventure" -> GameMode.ADVENTURE;
+      case "spectator" -> GameMode.SPECTATOR;
+      default -> null;
+    };
   }
 
   public static void getPlayerDimension(ServerPlayerEntity player) {

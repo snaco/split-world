@@ -26,5 +26,15 @@ public interface PlayerCallback {
     return ActionResult.PASS;
   });
 
+  Event<PlayerCallback> WORLD_CHANGE = EventFactory.createArrayBacked(PlayerCallback.class, (listeners) -> (player) -> {
+    for (PlayerCallback listener : listeners) {
+      ActionResult result = listener.interact(player);
+      if (result != ActionResult.PASS) {
+        return result;
+      }
+    }
+    return ActionResult.PASS;
+  });
+
   ActionResult interact(ServerPlayerEntity player);
 }
