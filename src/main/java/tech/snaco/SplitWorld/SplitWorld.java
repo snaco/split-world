@@ -6,7 +6,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.GameMode;
@@ -33,7 +32,8 @@ public class SplitWorld implements ModInitializer {
   public void onInitialize() {
     IO.verifyDir("splitworld");
     this.config = new ConfigLoader().load();
-    PlayerCallback.PLAYER_TICK.register(IO::verifyPlayerDir);
+    PlayerCallback.PLAYER_TICK.register(IO::verifyPlayerInventoryDir);
+    PlayerCallback.PLAYER_TICK.register(IO::verifyPlayerEnderChestDir);
     PlayerCallback.PLAYER_TICK.register(this::trackPlayerPosition);
     PlayerCallback.BEFORE_DEATH.register(this::nukeInventoryIfSurvival);
     PlayerCallback.WORLD_CHANGE.register(this::worldChange);
@@ -112,6 +112,8 @@ public class SplitWorld implements ModInitializer {
     var gameMode = mc.getPlayerGameMode(player);
     if (gameMode == GameMode.CREATIVE || gameMode == GameMode.SURVIVAL) {
       IO.nukeSavedInventory(player, gameMode);
+      IO.nukeSavedEnderChest(player, gameMode);
+      IO.saveEnderChest(player, gameMode);
       IO.saveInventory(player, gameMode);
       player.getInventory().clear();
       mc.setPlayerGameMode(player, GameMode.SPECTATOR);
@@ -120,6 +122,7 @@ public class SplitWorld implements ModInitializer {
       LOGGER.info(string.info("%s is now adventuring.", mc.playerName(player)));
     }
     player.getInventory().clear();
+    player.getEnderChestInventory().clear();
   }
 
   private void setGameMode(ServerPlayerEntity player, boolean onPositiveSide, boolean preNukeInventory, DimensionConfig config) {
@@ -127,20 +130,26 @@ public class SplitWorld implements ModInitializer {
     if (shouldSetCreative(onPositiveSide, config) && playerGameMode != GameMode.CREATIVE) {
       if (preNukeInventory) {
         IO.nukeSavedInventory(player, GameMode.SURVIVAL);
+        IO.nukeSavedEnderChest(player, GameMode.SURVIVAL);
         IO.saveInventory(player, GameMode.SURVIVAL);
+        IO.saveEnderChest(player, GameMode.SURVIVAL);
       }
       mc.setPlayerGameMode(player, GameMode.CREATIVE);
       IO.loadInventory(player, GameMode.CREATIVE);
+      IO.loadEnderChest(player, GameMode.CREATIVE);
       player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
           SoundCategory.BLOCKS, 0.25f, 1f);
       LOGGER.info(string.info("%s is now creative.", mc.playerName(player)));
     } else if (shouldSetSurvival(onPositiveSide, config) && playerGameMode != GameMode.SURVIVAL) {
       if (preNukeInventory) {
         IO.nukeSavedInventory(player, GameMode.CREATIVE);
+        IO.nukeSavedEnderChest(player, GameMode.CREATIVE);
         IO.saveInventory(player, GameMode.CREATIVE);
+        IO.saveEnderChest(player, GameMode.CREATIVE);
       }
       mc.setPlayerGameMode(player, GameMode.SURVIVAL);
       IO.loadInventory(player, GameMode.SURVIVAL);
+      IO.loadEnderChest(player, GameMode.SURVIVAL);
       player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
           SoundCategory.BLOCKS, 0.25f, 1f);
       if (config.creativeSide.equals("negative")) {
@@ -232,8 +241,11 @@ public class SplitWorld implements ModInitializer {
 
   private void changeGameMode(ServerPlayerEntity player, GameMode currentGameMode, GameMode newGameMode) {
     IO.nukeSavedInventory(player, currentGameMode);
+    IO.nukeSavedEnderChest(player, currentGameMode);
     IO.saveInventory(player, currentGameMode);
+    IO.saveEnderChest(player, currentGameMode);
     IO.loadInventory(player, newGameMode);
+    IO.loadEnderChest(player, currentGameMode);
     mc.setPlayerGameMode(player, newGameMode);
   }
 }
