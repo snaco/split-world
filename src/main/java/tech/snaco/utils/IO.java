@@ -27,13 +27,6 @@ public class IO {
         return string.f("splitworld/%s_enderchest", player.getUuidAsString());
     }
 
-    public static ActionResult nukeSavedEnderChest(ServerPlayerEntity player) {
-        if (nukeSavedEnderChest(player, GameMode.SURVIVAL)) {
-            return ActionResult.PASS;
-        }
-        return ActionResult.FAIL;
-    }
-
     public static ActionResult nukeSavedSurvivalInventory(ServerPlayerEntity player) {
         if (nukeSavedInventory(player, GameMode.SURVIVAL)) {
             return ActionResult.PASS;
@@ -41,18 +34,18 @@ public class IO {
         return ActionResult.FAIL;
     }
 
-    public static boolean nukeSavedEnderChest(ServerPlayerEntity player, GameMode gameMode) {
+    public static void nukeSavedEnderChest(ServerPlayerEntity player, GameMode gameMode) {
         var dir = new File(getEnderChestDir(player));
         var files = dir.listFiles();
         if (files == null) {
-            return false;
+            return;
         }
         for (var file : Objects.requireNonNull(dir.listFiles())) {
             if (file.getName().contains(gameMode.toString())) {
+                //noinspection ResultOfMethodCallIgnored
                 file.delete();
             }
         }
-        return true;
     }
 
     public static boolean nukeSavedInventory(ServerPlayerEntity player, GameMode gameMode) {
@@ -63,6 +56,7 @@ public class IO {
         }
         for (var file : Objects.requireNonNull(dir.listFiles())) {
             if (file.getName().contains(gameMode.toString())) {
+                //noinspection ResultOfMethodCallIgnored
                 file.delete();
             }
         }
@@ -95,7 +89,7 @@ public class IO {
             } else {
                 for (var file : Objects.requireNonNull(dir.listFiles())) {
                     if (file.getName().contains(gameMode.toString())) {
-                        var nbt = NbtIo.read(file);
+                        var nbt = NbtIo.read(file.toPath());
                         if (nbt != null) {
                             nbtList.add(nbt);
                         }
@@ -120,7 +114,7 @@ public class IO {
             } else {
                 for (var file : Objects.requireNonNull(dir.listFiles())) {
                     if (file.getName().contains(gameMode.toString())) {
-                        var nbt = NbtIo.read(file);
+                        var nbt = NbtIo.read(file.toPath());
                         if (nbt != null) {
                             nbtList.add(nbt);
                         }
@@ -143,7 +137,7 @@ public class IO {
             for (int i = 0; i < nbtList.size(); i++) {
                 var nbt = nbtList.get(i);
                 var file = new File(string.f("%s/%s_%d.nbt", dir, gameMode.toString(), i));
-                NbtIo.write((NbtCompound) nbt, file);
+                NbtIo.write((NbtCompound) nbt, file.toPath());
             }
         } catch (Exception ex) {
             SplitWorld.LOGGER.error(string.error("Error saving inventory file for %s!", player.getName().getString()));
@@ -152,12 +146,12 @@ public class IO {
 
     public static void saveEnderChest(ServerPlayerEntity player, GameMode gameMode) {
         try {
-            var nbtList = player.getEnderChestInventory().toNbtList();
+            NbtList nbtList = player.getEnderChestInventory().toNbtList();
             var dir = getEnderChestDir(player);
             for (int i = 0; i < nbtList.size(); i++) {
                 var nbt = nbtList.get(i);
                 var file = new File(string.f("%s/%s_%d.nbt", dir, gameMode.toString(), i));
-                NbtIo.write((NbtCompound) nbt, file);
+                NbtIo.write((NbtCompound) nbt, file.toPath());
             }
         } catch (IOException e) {
             SplitWorld.LOGGER.error(string.error("Error saving ender chest file for %s!", player.getName().getString()));
@@ -169,6 +163,7 @@ public class IO {
         try {
             var dirPath = Files.createDirectory(dir);
             if (Files.notExists(dirPath) && !Files.exists(dirPath)) {
+                //noinspection ResultOfMethodCallIgnored
                 new File(dirName).mkdir();
                 SplitWorld.LOGGER.info(string.info("Created directory: %s", dirName));
                 return true;

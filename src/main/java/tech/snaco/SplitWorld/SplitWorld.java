@@ -22,6 +22,7 @@ import tech.snaco.utils.exceptions.SplitWorldConfigException;
 import tech.snaco.utils.string.string;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class SplitWorld implements ModInitializer {
   public static final Logger LOGGER = LoggerFactory.getLogger("splitworld");
@@ -102,8 +103,8 @@ public class SplitWorld implements ModInitializer {
 
   private ActionResult nukeInventoryIfSurvival(ServerPlayerEntity player) {
     if (mc.getPlayerGameMode(player) == GameMode.SURVIVAL
-        && !player.server.getGameRules().getBoolean(GameRules.KEEP_INVENTORY)) {
-      IO.nukeSavedSurvivalInventory(player);
+        && !Objects.requireNonNull(player.getServer()).getGameRules().getBoolean(GameRules.KEEP_INVENTORY)) {
+      return IO.nukeSavedSurvivalInventory(player);
     }
     return ActionResult.PASS;
   }
@@ -117,8 +118,7 @@ public class SplitWorld implements ModInitializer {
       IO.saveInventory(player, gameMode);
       player.getInventory().clear();
       mc.setPlayerGameMode(player, GameMode.SPECTATOR);
-      player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
-          SoundCategory.BLOCKS, 0.25f, 1f);
+      player.getWorld().playSound(null, player.getBlockPos(), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL.value(), SoundCategory.BLOCKS, 0.25f, 1f);
       LOGGER.info(string.info("%s is now adventuring.", mc.playerName(player)));
     }
     player.getInventory().clear();
@@ -137,7 +137,7 @@ public class SplitWorld implements ModInitializer {
       mc.setPlayerGameMode(player, GameMode.CREATIVE);
       IO.loadInventory(player, GameMode.CREATIVE);
       IO.loadEnderChest(player, GameMode.CREATIVE);
-      player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
+      player.getWorld().playSound(null, player.getBlockPos(), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL.value(),
           SoundCategory.BLOCKS, 0.25f, 1f);
       LOGGER.info(string.info("%s is now creative.", mc.playerName(player)));
     } else if (shouldSetSurvival(onPositiveSide, config) && playerGameMode != GameMode.SURVIVAL) {
@@ -150,10 +150,10 @@ public class SplitWorld implements ModInitializer {
       mc.setPlayerGameMode(player, GameMode.SURVIVAL);
       IO.loadInventory(player, GameMode.SURVIVAL);
       IO.loadEnderChest(player, GameMode.SURVIVAL);
-      player.world.playSound(null, new BlockPos(player.getPos()), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL,
+      player.getWorld().playSound(null, player.getBlockPos(), SoundEvents.BLOCK_NOTE_BLOCK_COW_BELL.value(),
           SoundCategory.BLOCKS, 0.25f, 1f);
       if (config.creativeSide.equals("negative")) {
-        player.teleport(player.getX(), findGroundLevel(player) + 1, player.getZ());
+        player.teleport(player.getX(), findGroundLevel(player) + 1, player.getZ(), false);
       }
       LOGGER.info(string.info("%s is now surviving.", mc.playerName(player)));
     }
@@ -182,7 +182,7 @@ public class SplitWorld implements ModInitializer {
   }
 
   private String getPlayerCurrentDimension(ServerPlayerEntity player) {
-    return player.getEntityWorld().getRegistryKey().getValue().toString();
+    return player.getWorld().getRegistryKey().getValue().toString();
   }
 
   private double getRelevantBlockPos(BlockPos blockPos, DimensionConfig config) {
@@ -198,24 +198,24 @@ public class SplitWorld implements ModInitializer {
       for (int i = -5; i < 5; i++) {
         for (int j = -config.borderWidth - 1; j < config.borderWidth; j++) {
           var feet = new BlockPos(
-              new Vec3i(player.getBlockPos().getX(), player.getBlockPos().getY() - 1, player.getPos().getZ()));
+              new Vec3i(player.getBlockPos().getX(), player.getBlockPos().getY() - 1, (int) player.getPos().getZ()));
           if (config.borderAxis.equals("X")) {
             feet = feet.add(j, k, i);
           }
           if (config.borderAxis.equals("Z")) {
             feet = feet.add(i, k, j);
           }
-          var blockAtFeet = player.world.getBlockState(feet);
+          var blockAtFeet = player.getWorld().getBlockState(feet);
           if (blockAtFeet != Blocks.AIR.getDefaultState() &&
               blockAtFeet != Blocks.BEDROCK.getDefaultState() &&
               blockAtFeet != Blocks.END_PORTAL.getDefaultState() &&
               blockAtFeet != Blocks.END_PORTAL_FRAME.getDefaultState() &&
               getRelevantBlockPos(feet, config) >= config.borderLocation - (config.borderWidth / 2.0) &&
               getRelevantBlockPos(feet, config) < config.borderLocation + (config.borderWidth / 2.0)) {
-            var head = new BlockPos(new Vec3i(player.getX(), player.getY() + 1, player.getZ()));
-            var body = new BlockPos(new Vec3i(player.getX(), player.getY(), player.getZ()));
+            var head = new BlockPos(new Vec3i((int) player.getX(), (int) player.getY() + 1, (int) player.getZ()));
+            var body = new BlockPos(new Vec3i((int) player.getX(), (int) player.getY(), (int) player.getZ()));
             // TODO: Add custom block that uses END_GATE texture and is unbreakable to be the border
-            player.world.setBlockState(feet, Blocks.BEDROCK.getDefaultState());
+            player.getWorld().setBlockState(feet, Blocks.BEDROCK.getDefaultState());
           }
         }
       }
@@ -225,13 +225,13 @@ public class SplitWorld implements ModInitializer {
   private void keepPlayerAboveGround(ServerPlayerEntity player) {
     var ground = findGroundLevel(player);
     if (player.getY() < ground) {
-      player.teleport(player.getX(), ground + 1, player.getZ());
+      player.teleport(player.getX(), ground + 1, player.getZ(), false);
     }
   }
 
   private int findGroundLevel(ServerPlayerEntity player) {
     for (int y = 319; y > -64; y--) {
-      var block = player.world.getBlockState(new BlockPos(new Vec3i(player.getBlockPos().getX(), y, player.getPos().getZ())));
+      var block = player.getWorld().getBlockState(new BlockPos(new Vec3i(player.getBlockPos().getX(), y, (int) player.getPos().getZ())));
       if (block != Blocks.AIR.getDefaultState() && block != Blocks.VOID_AIR.getDefaultState()) {
         return y;
       }
